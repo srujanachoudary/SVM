@@ -10,14 +10,20 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 # =============================
 # Page Config
 # =============================
-st.set_page_config("Smart Loan Approval System", layout="centered")
+st.set_page_config(
+    page_title="Smart Loan Approval System",
+    layout="centered"
+)
 
 # =============================
 # Load CSS
 # =============================
 def load_css(file):
-    with open(file) as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    try:
+        with open(file) as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        pass  # prevents Streamlit crash if css not found
 
 load_css("style.css")
 
@@ -44,7 +50,7 @@ df = load_data()
 # Dataset Preview
 # =============================
 st.markdown('<div class="card">', unsafe_allow_html=True)
-st.subheader("Dataset Preview")
+st.subheader("📊 Dataset Preview")
 st.dataframe(df.head())
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -85,17 +91,16 @@ kernel = st.radio(
 )
 
 if kernel == "Linear SVM":
-    model = SVC(kernel="linear")
+    model = SVC(kernel="linear", probability=True)
 elif kernel == "Polynomial SVM":
-    model = SVC(kernel="poly", degree=3)
+    model = SVC(kernel="poly", degree=3, probability=True)
 else:
-    model = SVC(kernel="rbf")
+    model = SVC(kernel="rbf", probability=True)
 
 model.fit(x_train, y_train)
 y_pred = model.predict(x_test)
 
 accuracy = accuracy_score(y_test, y_pred)
-
 st.metric("Model Accuracy", f"{accuracy*100:.2f}%")
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -103,7 +108,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 # Confusion Matrix
 # =============================
 st.markdown('<div class="card">', unsafe_allow_html=True)
-st.subheader("Confusion Matrix")
+st.subheader("📌 Confusion Matrix")
 
 cm = confusion_matrix(y_test, y_pred)
 fig, ax = plt.subplots()
@@ -119,28 +124,59 @@ st.pyplot(fig)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # =============================
-# Prediction Section
-# =============================
-# =============================
 # Sidebar - Loan Eligibility
 # =============================
 st.sidebar.header("🔍 Check Loan Eligibility")
 
+# Mappings
+gender_map = {"Female": 0, "Male": 1}
+married_map = {"No": 0, "Yes": 1}
+education_map = {"Not Graduate": 0, "Graduate": 1}
+self_emp_map = {"No": 0, "Yes": 1}
+dependents_map = {"0": 0, "1": 1, "2": 2, "3+": 3}
+property_map = {"Rural": 0, "Semiurban": 1, "Urban": 2}
+
 user_input = []
 
-for col in X.columns:
-    val = st.sidebar.number_input(
-        f"{col}",
-        float(X[col].min()),
-        float(X[col].max())
-    )
-    user_input.append(val)
+user_input.append(gender_map[
+    st.sidebar.selectbox("Gender", list(gender_map.keys()))
+])
+
+user_input.append(married_map[
+    st.sidebar.selectbox("Married", list(married_map.keys()))
+])
+
+user_input.append(dependents_map[
+    st.sidebar.selectbox("Dependents", list(dependents_map.keys()))
+])
+
+user_input.append(education_map[
+    st.sidebar.selectbox("Education", list(education_map.keys()))
+])
+
+user_input.append(self_emp_map[
+    st.sidebar.selectbox("Self Employed", list(self_emp_map.keys()))
+])
+
+user_input.append(st.sidebar.number_input("Applicant Income", min_value=0))
+user_input.append(st.sidebar.number_input("Coapplicant Income", min_value=0))
+user_input.append(st.sidebar.number_input("Loan Amount", min_value=0))
+user_input.append(st.sidebar.number_input("Loan Amount Term", min_value=0))
+user_input.append(st.sidebar.selectbox("Credit History", [0, 1]))
+
+user_input.append(property_map[
+    st.sidebar.selectbox("Property Area", list(property_map.keys()))
+])
 
 user_input = np.array(user_input).reshape(1, -1)
 user_input = scaler.transform(user_input)
 
+# =============================
+# Prediction
+# =============================
 if st.sidebar.button("Check Loan Eligibility"):
     result = model.predict(user_input)[0]
+    confidence = model.predict_proba(user_input).max()
 
     if result == 1:
         st.sidebar.success("✅ Loan Approved")
@@ -154,4 +190,6 @@ if st.sidebar.button("Check Loan Eligibility"):
         f"the applicant is **{decision} to repay the loan**."
     )
 
-
+    st.sidebar.caption(
+        f"Kernel Used: **{kernel}** | Confidence: **{confidence*100:.2f}%**"
+    )
