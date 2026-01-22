@@ -121,37 +121,37 @@ st.markdown('</div>', unsafe_allow_html=True)
 # =============================
 # Prediction Section
 # =============================
-st.markdown('<div class="card">', unsafe_allow_html=True)
-st.subheader("🔍 Check Loan Eligibility")
+# =============================
+# Sidebar - Loan Eligibility
+# =============================
+st.sidebar.header("🔍 Check Loan Eligibility")
 
 user_input = []
 
 for col in X.columns:
-    val = st.number_input(f"{col}", float(X[col].min()), float(X[col].max()))
+    val = st.sidebar.number_input(
+        f"{col}",
+        float(X[col].min()),
+        float(X[col].max())
+    )
     user_input.append(val)
 
 user_input = np.array(user_input).reshape(1, -1)
 user_input = scaler.transform(user_input)
 
-if st.button("Check Loan Eligibility"):
+if st.sidebar.button("Check Loan Eligibility"):
     result = model.predict(user_input)[0]
 
     if result == 1:
-        st.markdown(
-            '<div class="prediction-box success">✅ Loan Approved</div>',
-            unsafe_allow_html=True
-        )
+        st.sidebar.success("✅ Loan Approved")
         decision = "likely"
     else:
-        st.markdown(
-            '<div class="prediction-box danger">❌ Loan Rejected</div>',
-            unsafe_allow_html=True
-        )
+        st.sidebar.error("❌ Loan Rejected")
         decision = "unlikely"
 
-    st.info(
+    st.sidebar.info(
         f"Based on credit history and income patterns, "
         f"the applicant is **{decision} to repay the loan**."
     )
 
-st.markdown('</div>', unsafe_allow_html=True)
+
